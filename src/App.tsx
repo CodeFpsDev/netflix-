@@ -23,6 +23,8 @@ import {
   MessageCircle,
   Edit3,
   RefreshCw,
+  RotateCcw,
+  ShieldCheck,
   Search,
   Database,
   History,
@@ -307,6 +309,11 @@ export default function App() {
   const [showPinDigits, setShowPinDigits] = useState<boolean>(true);
   const [copiedPin, setCopiedPin] = useState<boolean>(false);
 
+  // Dedicated Individual Reset Recuadro Modal State
+  const [resetModalProfile, setResetModalProfile] = useState<NetflixProfile | null>(null);
+  const [resetDateOption, setResetDateOption] = useState<'keep' | 'today' | 'plus30' | 'custom'>('keep');
+  const [resetCustomDate, setResetCustomDate] = useState<string>('');
+
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -436,6 +443,70 @@ export default function App() {
     setCopiedPin(true);
     setTimeout(() => setCopiedPin(false), 2000);
     showToast(`PIN ${pinText} copiado al portapapeles`);
+  };
+
+  // Open dedicated Reset Modal for a specific Recuadro (profile)
+  const handleOpenResetModal = (profile: NetflixProfile) => {
+    setResetModalProfile(profile);
+    setResetDateOption('keep');
+    setResetCustomDate(profile.paymentDate || new Date().toISOString().slice(0, 10));
+  };
+
+  // Confirm Reset for this single Recuadro
+  // GUARANTEE: Does NOT touch clientName or price loaded by the user!
+  const handleConfirmResetRecuadro = async () => {
+    if (!resetModalProfile) return;
+
+    try {
+      setIsSyncing(true);
+      let targetDate = resetModalProfile.paymentDate;
+      const todayStr = new Date().toISOString().slice(0, 10);
+
+      if (resetDateOption === 'today') {
+        targetDate = todayStr;
+      } else if (resetDateOption === 'plus30') {
+        const baseDate = new Date(resetModalProfile.paymentDate);
+        const validDate = isNaN(baseDate.getTime()) ? new Date() : baseDate;
+        validDate.setDate(validDate.getDate() + 30);
+        targetDate = validDate.toISOString().slice(0, 10);
+      } else if (resetDateOption === 'custom' && resetCustomDate) {
+        targetDate = resetCustomDate;
+      }
+
+      const docRef = doc(db, 'netflix_profiles', resetModalProfile.id);
+
+      // ONLY resets paymentStatus to 'pendiente' and updates the renewal cycle date.
+      // Keeps clientName, price, pin, phone, notes and other settings 100% intact!
+      await updateDoc(docRef, {
+        paymentStatus: 'pendiente',
+        paymentDate: targetDate,
+        updatedAt: new Date().toISOString()
+      });
+
+      // Register in payment history
+      try {
+        await addDoc(collection(db, 'payment_logs'), {
+          profileId: resetModalProfile.id,
+          clientName: resetModalProfile.clientName,
+          accountName: resetModalProfile.accountName,
+          profileNumber: resetModalProfile.profileNumber,
+          amount: resetModalProfile.price,
+          type: 'restablecimiento',
+          date: new Date().toISOString(),
+          notes: `Recuadro restablecido a Pago Pendiente (nuevo ciclo: ${targetDate}). Cliente y precio intactos.`
+        });
+      } catch (logErr) {
+        console.warn('Log error:', logErr);
+      }
+
+      showToast(`✅ Recuadro Perfil ${resetModalProfile.profileNumber} restablecido a Pago Pendiente. Cliente "${resetModalProfile.clientName}" y precio ${currencySymbol} ${resetModalProfile.price.toLocaleString()} conservados.`);
+      setResetModalProfile(null);
+    } catch (err) {
+      console.error('Error resetting recuadro:', err);
+      showToast('Error al restablecer el recuadro en Firestore');
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   // Toggle Payment Status
@@ -780,15 +851,6 @@ export default function App() {
                 Historial de Pagos
               </button>
             </div>
-
-            <button
-              onClick={seedInitialProfiles}
-              title="Restaurar todos los perfiles en Firestore"
-              className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white rounded-xl text-xs transition-colors cursor-pointer flex items-center space-x-1"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span className="hidden sm:inline">Restablecer</span>
-            </button>
           </div>
         </div>
       </header>
@@ -1332,6 +1394,7 @@ export default function App() {
                       onTogglePayment={() => handleTogglePayment(profile)}
                       onToggleClientStatus={() => handleToggleClientStatus(profile)}
                       onRenewMonth={() => handleRenewMonth(profile)}
+                      onReset={() => handleOpenResetModal(profile)}
                       onEdit={() => setEditingProfile(profile)}
                       onWhatsApp={() => sendWhatsAppReminder(profile)}
                     />
@@ -1389,6 +1452,7 @@ export default function App() {
                       onTogglePayment={() => handleTogglePayment(profile)}
                       onToggleClientStatus={() => handleToggleClientStatus(profile)}
                       onRenewMonth={() => handleRenewMonth(profile)}
+                      onReset={() => handleOpenResetModal(profile)}
                       onEdit={() => setEditingProfile(profile)}
                       onWhatsApp={() => sendWhatsAppReminder(profile)}
                     />
@@ -1447,6 +1511,7 @@ export default function App() {
                       onTogglePayment={() => handleTogglePayment(profile)}
                       onToggleClientStatus={() => handleToggleClientStatus(profile)}
                       onRenewMonth={() => handleRenewMonth(profile)}
+                      onReset={() => handleOpenResetModal(profile)}
                       onEdit={() => setEditingProfile(profile)}
                       onWhatsApp={() => sendWhatsAppReminder(profile)}
                     />
@@ -1615,6 +1680,15 @@ export default function App() {
                         </td>
 
                         <td className="py-3.5 px-4 text-right space-x-2">
+                          <button
+                            onClick={() => handleOpenResetModal(profile)}
+                            title="Restablecer este recuadro a Pago Pendiente (conserva cliente y precio)"
+                            className="px-2.5 py-1 bg-amber-950/40 hover:bg-amber-900/60 border border-amber-800/60 text-amber-300 rounded-lg text-xs font-medium transition-colors cursor-pointer inline-flex items-center space-x-1"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span className="hidden xl:inline">Restablecer</span>
+                          </button>
+
                           <button
                             onClick={() => handleRenewMonth(profile)}
                             title="Extender +30 días y marcar Pagado"
@@ -2062,6 +2136,179 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* 3. MODAL DE RESTABLECIMIENTO INDIVIDUAL POR RECUADRO */}
+      {resetModalProfile && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-750 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+                  <RotateCcw className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-sm">
+                    Restablecer Recuadro
+                  </h3>
+                  <span className="text-xs text-amber-400 font-mono">
+                    Cuenta: {resetModalProfile.accountName} · Perfil {resetModalProfile.profileNumber}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setResetModalProfile(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              {/* Data Protection Guarantee Banner */}
+              <div className="bg-emerald-950/70 border border-emerald-800/80 rounded-xl p-3.5 flex items-start space-x-3 text-xs text-emerald-200">
+                <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-white block font-semibold mb-1 text-xs">
+                    Tus datos cargados están 100% protegidos
+                  </strong>
+                  <span className="text-slate-350 text-[11px] leading-relaxed block">
+                    El cliente cargado (<strong className="text-white">{resetModalProfile.clientName}</strong>), su precio (<strong className="text-emerald-300">{currencySymbol} {resetModalProfile.price.toLocaleString()}</strong>) y su PIN <strong>NO se modificarán ni borrarán</strong>. Solo se restablecerá el estado para el nuevo ciclo de cobro.
+                  </span>
+                </div>
+              </div>
+
+              {/* Preserved Data Summary Box */}
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-3.5 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Cliente actual:</span>
+                  <span className="font-bold text-white flex items-center space-x-1.5">
+                    <span>{resetModalProfile.clientName}</span>
+                    <span className="text-[10px] text-emerald-400 bg-emerald-950/90 border border-emerald-850 px-1.5 py-0.5 rounded font-medium">intacto</span>
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">Precio mensual:</span>
+                  <span className="font-bold text-emerald-400 font-mono flex items-center space-x-1.5">
+                    <span>{currencySymbol} {resetModalProfile.price.toLocaleString()}</span>
+                    <span className="text-[10px] text-emerald-400 bg-emerald-950/90 border border-emerald-850 px-1.5 py-0.5 rounded font-medium">intacto</span>
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400">PIN del perfil:</span>
+                  <span className="font-mono font-bold text-amber-300">
+                    {resetModalProfile.pin || 'Sin PIN'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-slate-850">
+                  <span className="text-slate-400">Estado resultante:</span>
+                  <span className="font-bold text-amber-400 bg-amber-950/80 border border-amber-800/70 px-2 py-0.5 rounded text-xs flex items-center space-x-1">
+                    <Clock className="w-3 h-3 text-amber-400" />
+                    <span>Pago Pendiente</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Renewal Date options for new cycle */}
+              <div className="space-y-2 pt-1">
+                <label className="block text-xs font-semibold text-slate-300">
+                  Fecha de vencimiento para el nuevo ciclo:
+                </label>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setResetDateOption('keep')}
+                    className={`p-2.5 rounded-xl border text-left transition-colors cursor-pointer ${
+                      resetDateOption === 'keep'
+                        ? 'bg-amber-950/60 border-amber-500 text-amber-200 shadow-xs'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="font-semibold text-[11px]">Mantener actual</div>
+                    <div className="text-[11px] font-mono text-slate-300 mt-0.5">{resetModalProfile.paymentDate}</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setResetDateOption('today')}
+                    className={`p-2.5 rounded-xl border text-left transition-colors cursor-pointer ${
+                      resetDateOption === 'today'
+                        ? 'bg-amber-950/60 border-amber-500 text-amber-200 shadow-xs'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="font-semibold text-[11px]">Fecha de hoy</div>
+                    <div className="text-[11px] font-mono text-slate-300 mt-0.5">{new Date().toISOString().slice(0, 10)}</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setResetDateOption('plus30')}
+                    className={`p-2.5 rounded-xl border text-left transition-colors cursor-pointer ${
+                      resetDateOption === 'plus30'
+                        ? 'bg-amber-950/60 border-amber-500 text-amber-200 shadow-xs'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="font-semibold text-[11px]">Sumar +30 días</div>
+                    <div className="text-[11px] font-mono text-slate-300 mt-0.5">
+                      {(() => {
+                        const d = new Date(resetModalProfile.paymentDate || new Date());
+                        d.setDate(d.getDate() + 30);
+                        return d.toISOString().slice(0, 10);
+                      })()}
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setResetDateOption('custom')}
+                    className={`p-2.5 rounded-xl border text-left transition-colors cursor-pointer ${
+                      resetDateOption === 'custom'
+                        ? 'bg-amber-950/60 border-amber-500 text-amber-200 shadow-xs'
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <div className="font-semibold text-[11px]">Personalizada</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">Elegir fecha...</div>
+                  </button>
+                </div>
+
+                {resetDateOption === 'custom' && (
+                  <div className="pt-1.5">
+                    <input
+                      type="date"
+                      value={resetCustomDate}
+                      onChange={e => setResetCustomDate(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center space-x-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setResetModalProfile(null)}
+                  className="flex-1 px-4 py-2.5 border border-slate-750 text-slate-400 hover:text-white rounded-xl text-xs font-medium transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmResetRecuadro}
+                  className="flex-1 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-xs transition-colors flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer"
+                >
+                  <RotateCcw className="w-4 h-4 stroke-[2.5]" />
+                  <span>Confirmar Restablecimiento</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2074,6 +2321,7 @@ interface ProfileCardProps {
   onTogglePayment: () => void;
   onToggleClientStatus: () => void;
   onRenewMonth: () => void;
+  onReset: () => void;
   onEdit: () => void;
   onWhatsApp: () => void;
 }
@@ -2085,6 +2333,7 @@ function ProfileCard({
   onTogglePayment,
   onToggleClientStatus,
   onRenewMonth,
+  onReset,
   onEdit,
   onWhatsApp
 }: ProfileCardProps) {
@@ -2120,6 +2369,13 @@ function ProfileCard({
           </div>
 
           <div className="flex items-center space-x-1">
+            <button
+              onClick={onReset}
+              className="p-1.5 text-slate-400 hover:text-amber-300 hover:bg-amber-950/50 rounded-lg transition-colors cursor-pointer"
+              title="Restablecer este recuadro a Pago Pendiente (conserva cliente y precio)"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
             <button
               onClick={onEdit}
               className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
@@ -2288,6 +2544,16 @@ function ProfileCard({
             <span>WhatsApp</span>
           </button>
         </div>
+
+        {/* Fila 3: Botón individual de Restablecimiento del Recuadro */}
+        <button
+          onClick={onReset}
+          title="Restablecer este recuadro a Pago Pendiente para un nuevo ciclo (conserva cliente y precio)"
+          className="w-full py-2 px-3 bg-slate-900/90 hover:bg-slate-850 border border-slate-800 hover:border-amber-600/70 text-slate-300 hover:text-amber-300 rounded-xl text-xs font-semibold flex items-center justify-center space-x-1.5 transition-colors cursor-pointer shadow-xs"
+        >
+          <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+          <span>Restablecer Recuadro</span>
+        </button>
       </div>
     </div>
   );
