@@ -1,0 +1,109 @@
+{
+  "entities": {
+    "NetflixProfile": {
+      "title": "NetflixProfile",
+      "description": "Perfil de Netflix asignado a un cliente con estado de pago y renovación",
+      "type": "object",
+      "properties": {
+        "accountName": {
+          "type": "string",
+          "description": "Nombre de la cuenta principal (eliasespinola o mynetfilin)"
+        },
+        "profileNumber": {
+          "type": "number",
+          "description": "Número de perfil asignado del 1 al 5"
+        },
+        "clientName": {
+          "type": "string",
+          "description": "Nombre del cliente asignado al perfil"
+        },
+        "clientPhone": {
+          "type": "string",
+          "description": "Número de teléfono o WhatsApp del cliente"
+        },
+        "paymentDate": {
+          "type": "string",
+          "description": "Fecha de vencimiento o pago del cliente"
+        },
+        "paymentStatus": {
+          "type": "string",
+          "enum": ["pagado", "pendiente"],
+          "description": "Estado del pago: pagado o pendiente"
+        },
+        "clientStatus": {
+          "type": "string",
+          "enum": ["renovado", "nuevo"],
+          "description": "Tipo de cliente: renovado o nuevo"
+        },
+        "price": {
+          "type": "number",
+          "description": "Monto mensual cobrado al cliente"
+        },
+        "pin": {
+          "type": "string",
+          "description": "PIN de seguridad del perfil"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notas adicionales del cliente"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Fecha y hora de última modificación"
+        }
+      },
+      "required": ["accountName", "profileNumber", "clientName", "paymentDate", "paymentStatus", "clientStatus"]
+    },
+    "PaymentLog": {
+      "title": "PaymentLog",
+      "description": "Historial de transacciones, cobros y renovaciones registradas",
+      "type": "object",
+      "properties": {
+        "profileId": {
+          "type": "string",
+          "description": "ID del perfil asociado"
+        },
+        "clientName": {
+          "type": "string",
+          "description": "Nombre del cliente"
+        },
+        "accountName": {
+          "type": "string",
+          "description": "Nombre de la cuenta de Netflix"
+        },
+        "profileNumber": {
+          "type": "number",
+          "description": "Número de perfil"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Monto abonado"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["pago", "renovacion"],
+          "description": "Tipo de movimiento"
+        },
+        "date": {
+          "type": "string",
+          "description": "Fecha de registro del pago"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Comentarios del cobro"
+        }
+      },
+      "required": ["clientName", "accountName", "amount", "type", "date"]
+    }
+  },
+  "firestore": {
+    "/netflix_profiles/{profileId}": {
+      "schema": "NetflixProfile",
+      "description": "Colección de los 10 perfiles distribuidos en las 2 cuentas de Netflix"
+    },
+    "/payment_logs/{logId}": {
+      "schema": "PaymentLog",
+      "description": "Historial de registros y auditoría de pagos"
+    }
+  }
+}

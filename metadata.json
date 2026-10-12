@@ -1,0 +1,6 @@
+{
+  "name": "Studio Hub",
+  "description": "Espacio de trabajo interactivo para proyectos, notas, tareas y herramientas creativas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
