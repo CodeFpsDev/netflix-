@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build",
+    "build": "vite build && mkdir -p docs && cp -r dist/* docs/ && cp docs/index.html docs/404.html",
     "predeploy": "vite build",
     "deploy": "gh-pages -d dist",
     "preview": "vite preview",
