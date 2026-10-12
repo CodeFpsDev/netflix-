@@ -221,7 +221,7 @@ const INITIAL_PROFILES: NetflixProfile[] = [
     pin: '7391',
     isExtension: true,
     deviceLimit: '1 solo dispositivo',
-    notes: 'Extensión oficial de Netflix · Habilitada para 1 solo dispositivo',
+    notes: 'Extensión de perfil · Habilitada para 1 solo dispositivo',
     updatedAt: new Date().toISOString()
   }
 ];
@@ -562,14 +562,14 @@ export default function App() {
     const cleanPhone = profile.clientPhone.replace(/[^0-9]/g, '');
     const countdown = calculateDaysRemaining(profile.paymentDate);
     const extensionNote = profile.isExtension || profile.accountName === 'milena'
-      ? '\n⚠️ Nota: Este perfil es una extensión de Netflix exclusiva para 1 solo dispositivo.'
+      ? '\n⚠️ Nota: Este perfil es una extensión exclusiva para 1 solo dispositivo.'
       : '';
 
     let text = '';
     if (profile.paymentStatus === 'pendiente') {
-      text = `Hola ${profile.clientName}, te escribimos de Netflix. Te recordamos que tu perfil ${profile.profileNumber} (Cuenta: ${profile.accountName}) tiene fecha de pago: ${profile.paymentDate} ${countdown.label}. Tu PIN es: ${profile.pin || 'Sin PIN'}. Monto mensual: ${currencySymbol} ${profile.price.toLocaleString()}.${extensionNote}\n¡Por favor confírmanos tu pago al transferir!`;
+      text = `Hola ${profile.clientName}, te escribimos sobre tu perfil ${profile.profileNumber} (Cuenta: ${profile.accountName}). Tu fecha de pago es: ${profile.paymentDate} ${countdown.label}. Tu PIN es: ${profile.pin || 'Sin PIN'}. Monto mensual: ${currencySymbol} ${profile.price.toLocaleString()}.${extensionNote}\n¡Por favor confírmanos tu pago al transferir!`;
     } else {
-      text = `Hola ${profile.clientName}, ¡muchas gracias por tu pago de Netflix! Tu perfil ${profile.profileNumber} en la cuenta ${profile.accountName} está activo hasta el ${profile.paymentDate} ${countdown.label}. Tu PIN de acceso es: ${profile.pin || 'Sin PIN'}.${extensionNote}\n¡Que disfrutes tu contenido!`;
+      text = `Hola ${profile.clientName}, ¡muchas gracias por tu pago! Tu perfil ${profile.profileNumber} en la cuenta ${profile.accountName} está activo hasta el ${profile.paymentDate} ${countdown.label}. Tu PIN de acceso es: ${profile.pin || 'Sin PIN'}.${extensionNote}\n¡Que disfrutes tu servicio!`;
     }
 
     const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(text)}`;
@@ -720,7 +720,7 @@ export default function App() {
             <div>
               <div className="flex items-center space-x-2">
                 <h1 className="text-lg font-bold tracking-tight text-white">
-                  Control de Ventas Netflix
+                  StreamControl · Gestión de Perfiles
                 </h1>
                 <span className="text-[11px] bg-rose-950/80 text-rose-300 border border-rose-800/60 px-2 py-0.5 rounded font-mono font-medium">
                   {profiles.length} Perfiles · eliasespinola, mynetfilin y milena
@@ -1743,7 +1743,7 @@ export default function App() {
                 <div className="bg-fuchsia-950/80 border border-fuchsia-800/80 rounded-xl p-3 flex items-center space-x-2.5 text-xs text-fuchsia-200">
                   <Smartphone className="w-4 h-4 text-fuchsia-400 shrink-0" />
                   <span>
-                    <strong>Extensión de Netflix:</strong> Este perfil está habilitado para ser utilizado en <strong>1 solo dispositivo</strong>.
+                    <strong>Extensión de Cuenta:</strong> Este perfil está habilitado para ser utilizado en <strong>1 solo dispositivo</strong>.
                   </span>
                 </div>
               )}
@@ -1778,7 +1778,7 @@ export default function App() {
               {/* Current PIN Display with Big Numbers */}
               <div className="text-center bg-slate-950 border border-slate-800/80 rounded-2xl p-5 space-y-3">
                 <span className="text-xs text-slate-400 uppercase tracking-wider block font-medium">
-                  PIN Actual de Netflix
+                  PIN Actual del Perfil
                 </span>
 
                 <div className="flex items-center justify-center space-x-2">
@@ -1808,7 +1808,7 @@ export default function App() {
                 </div>
 
                 <p className="text-[11px] text-slate-400">
-                  Usa este PIN para proteger el perfil del cliente en la aplicación de Netflix.
+                  Usa este PIN para proteger y autenticar el perfil del cliente.
                 </p>
               </div>
 
@@ -1987,7 +1987,7 @@ export default function App() {
 
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    PIN del Perfil Netflix
+                    PIN del Perfil
                   </label>
                   <input
                     type="text"
@@ -2153,7 +2153,7 @@ function ProfileCard({
           {isExt && (
             <div className="mt-1.5 mb-2 inline-flex items-center space-x-1.5 bg-fuchsia-950/80 border border-fuchsia-800/80 text-fuchsia-300 px-2 py-0.5 rounded-md text-[11px] font-semibold">
               <Smartphone className="w-3 h-3 text-fuchsia-400 shrink-0" />
-              <span>Extensión Netflix · Solo 1 Dispositivo</span>
+              <span>Extensión · Solo 1 Dispositivo</span>
             </div>
           )}
 
